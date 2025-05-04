@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PX Gimel Runner</title>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #f7f7f7;
+            overflow: hidden;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        /* Game Container */
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 800px;
+            max-height: 300px;
+            margin: auto;
+            background-color: white;
+            overflow: hidden;
+        }
+
+        /* Ground Element */
+        .ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><rect width="20" height="20" fill="%23f7f7f7"/><path d="M0,10 L20,10" stroke="%23555" stroke-width="1"/></svg>');
+            background-repeat: repeat-x;
+            background-size: 20px 20px;
+        }
+
+        /* Dino Character */
+        .dino {
+            position: absolute;
+            bottom: 20px;
+            left: 50px;
+            width: 44px;
+            height: 47px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="44" height="47" viewBox="0 0 44 47"><rect x="12" y="0" width="8" height="30" fill="%23333"/><rect x="20" y="0" width="12" height="8" fill="%23333"/><rect x="32" y="0" width="8" height="12" fill="%23333"/><rect x="20" y="8" width="8" height="12" fill="%23333"/><rect x="28" y="8" width="4" height="4" fill="%23f7f7f7"/><rect x="0" y="30" width="12" height="12" fill="%23333"/><rect x="12" y="30" width="8" height="17" fill="%23333"/><rect x="20" y="35" width="12" height="12" fill="%23333"/><rect x="32" y="35" width="8" height="8" fill="%23333"/><rect x="40" y="35" width="4" height="4" fill="%23333"/></svg>');
+            z-index: 2;
+            transition: transform 0.1s ease-out;
+        }
+
+        .dino.jumping {
+            animation: dinoJump 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        .dino.running {
+            animation: dinoRun 0.6s steps(2) infinite;
+        }
+
+        @keyframes dinoRun {
+            0% { background-position: 0 0; }
+            100% { background-position: -88px 0; }
+        }
+
+        @keyframes dinoJump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-100px); }
+            100% { transform: translateY(0); }
+        }
+
+        /* Obstacles */
+        .obstacle {
+            position: absolute;
+            bottom: 20px;
+            width: 20px;
+            height: 40px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="40" viewBox="0 0 20 40"><rect x="4" y="0" width="12" height="40" fill="%23333"/><rect x="0" y="8" width="20" height="4" fill="%23333"/><rect x="0" y="28" width="20" height="4" fill="%23333"/></svg>');
+            z-index: 1;
+        }
+
+        .obstacle.large {
+            height: 60px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="60" viewBox="0 0 20 60"><rect x="4" y="0" width="12" height="60" fill="%23333"/><rect x="0" y="8" width="20" height="4" fill="%23333"/><rect x="0" y="48" width="20" height="4" fill="%23333"/></svg>');
+        }
+
+        /* Score Display */
+        .score-container {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        /* Game Over Screen */
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+            z-index: 10;
+        }
+
+        .game-over h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .restart-btn {
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .restart-btn:hover {
+            background-color: #555;
+        }
+
+        /* Instructions */
+        .instructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #555;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 600px) {
+            .dino {
+                width: 36px;
+                height: 38px;
+                left: 30px;
+            }
+
+            .obstacle {
+                width: 16px;
+                height: 32px;
+            }
+
+            .obstacle.large {
+                height: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="ground"></div>
+        <div class="dino running"></div>
+        <div class="score-container">Score: <span class="score">0</span></div>
+        
+        <div class="game-over">
+            <h2>Game Over</h2>
+            <button class="restart-btn">Play Again</button>
+        </div>
+        
+        <div class="instructions">
+            <p>Press Space or Up Arrow to Jump</p>
+            <p>Tap on mobile</p>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Chrome Dinosaur Game Clone
+         * Now with increased obstacle spacing (4-5 seconds)
+         */
+
+        // Game State Manager
+        const GameState = {
+            INIT: 'init',
+            PLAYING: 'playing',
+            GAME_OVER: 'gameOver',
+            current: 'init'
+        };
+
+        // Game Constants
+        const GRAVITY = 0.5;
+        const JUMP_FORCE = -12;
+        const INITIAL_SPEED = 5;
+        const SPEED_INCREMENT = 0.005;
+        const OBSTACLE_INTERVAL = 3000; // Increased from 1500 to 3000 (3 seconds)
+        const SCORE_INCREMENT = 0.1;
+
+        // DOM Elements
+        const gameContainer = document.querySelector('.game-container');
+        const dino = document.querySelector('.dino');
+        const scoreElement = document.querySelector('.score');
+        const gameOverScreen = document.querySelector('.game-over');
+        const restartBtn = document.querySelector('.restart-btn');
+        const instructions = document.querySelector('.instructions');
+
+        // Game Variables
+        let score = 0;
+        let gameSpeed = INITIAL_SPEED;
+        let isJumping = false;
+        let dinoPosition = 0;
+        let dinoVelocity = 0;
+        let lastTime = 0;
+        let obstacleTimer = OBSTACLE_INTERVAL * 0.7; // Start with first obstacle after 70% of interval
+        let animationFrameId;
+        let obstacles = [];
+
+        // Input Handler
+        const InputHandler = {
+            init() {
+                document.addEventListener('keydown', this.handleKeyDown.bind(this));
+                gameContainer.addEventListener('touchstart', this.handleTouch.bind(this));
+                gameContainer.addEventListener('click', this.handleClick.bind(this));
+                restartBtn.addEventListener('click', this.restartGame.bind(this));
+            },
+
+            handleKeyDown(e) {
+                if ((e.code === 'Space' || e.key === 'ArrowUp') && !isJumping && GameState.current === GameState.PLAYING) {
+                    this.jump();
+                } else if ((e.code === 'Space' || e.key === 'ArrowUp') && GameState.current === GameState.INIT) {
+                    this.startGame();
+                } else if ((e.code === 'Space' || e.key === 'ArrowUp') && GameState.current === GameState.GAME_OVER) {
+                    this.restartGame();
+                }
+            },
+
+            handleTouch() {
+                if (!isJumping && GameState.current === GameState.PLAYING) {
+                    this.jump();
+                } else if (GameState.current === GameState.INIT) {
+                    this.startGame();
+                }
+            },
+
+            handleClick(e) {
+                if (e.target.classList.contains('restart-btn')) {
+                    return; // Handled by the dedicated event listener
+                } else if (GameState.current === GameState.INIT) {
+                    this.startGame();
+                } else if (!isJumping && GameState.current === GameState.PLAYING) {
+                    this.jump();
+                }
+            },
+
+            jump() {
+                if (!isJumping) {
+                    isJumping = true;
+                    dinoVelocity = JUMP_FORCE;
+                    dino.classList.add('jumping');
+                    setTimeout(() => dino.classList.remove('jumping'), 800);
+                }
+            },
+
+            startGame() {
+                GameState.current = GameState.PLAYING;
+                instructions.style.display = 'none';
+                gameOverScreen.style.display = 'none';
+                resetGame();
+                if (!animationFrameId) {
+                    lastTime = performance.now();
+                    animationFrameId = requestAnimationFrame(gameLoop);
+                }
+            },
+
+            restartGame() {
+                GameState.current = GameState.PLAYING;
+                gameOverScreen.style.display = 'none';
+                resetGame();
+                if (!animationFrameId) {
+                    lastTime = performance.now();
+                    animationFrameId = requestAnimationFrame(gameLoop);
+                }
+            }
+        };
+
+        // Game Physics
+        const Physics = {
+            updateDino(deltaTime) {
+                if (isJumping) {
+                    dinoPosition += dinoVelocity;
+                    dinoVelocity += GRAVITY;
+
+                    if (dinoPosition >= 0) {
+                        dinoPosition = 0;
+                        isJumping = false;
+                        dinoVelocity = 0;
+                    }
+
+                    dino.style.transform = `translateY(${dinoPosition}px)`;
+                }
+            },
+
+            updateObstacles(deltaTime) {
+                obstacles.forEach((obstacle, index) => {
+                    const obstacleRect = obstacle.getBoundingClientRect();
+                    const left = parseFloat(obstacle.style.left || gameContainer.offsetWidth) - (gameSpeed * deltaTime / 16);
+                    obstacle.style.left = `${left}px`;
+
+                    // Remove obstacles that are off screen
+                    if (left + obstacleRect.width < 0) {
+                        gameContainer.removeChild(obstacle);
+                        obstacles.splice(index, 1);
+                    }
+                });
+            },
+
+            checkCollisions() {
+                const dinoRect = dino.getBoundingClientRect();
+                
+                for (let i = 0; i < obstacles.length; i++) {
+                    const obstacle = obstacles[i];
+                    const obstacleRect = obstacle.getBoundingClientRect();
+                    
+                    // Simple AABB collision detection
+                    if (
+                        dinoRect.right > obstacleRect.left &&
+                        dinoRect.left < obstacleRect.right &&
+                        dinoRect.bottom > obstacleRect.top &&
+                        dinoRect.top < obstacleRect.bottom
+                    ) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
+
+        // Game Renderer
+        const Renderer = {
+            createObstacle() {
+                const obstacle = document.createElement('div');
+                obstacle.className = Math.random() > 0.5 ? 'obstacle' : 'obstacle large';
+                obstacle.style.left = `${gameContainer.offsetWidth}px`;
+                gameContainer.appendChild(obstacle);
+                obstacles.push(obstacle);
+            },
+
+            updateScore() {
+                scoreElement.textContent = Math.floor(score);
+            },
+
+            showGameOver() {
+                gameOverScreen.style.display = 'block';
+            }
+        };
+
+        // Game Logic
+        function resetGame() {
+            // Clear existing obstacles
+            obstacles.forEach(obstacle => {
+                if (obstacle.parentNode === gameContainer) {
+                    gameContainer.removeChild(obstacle);
+                }
+            });
+            obstacles = [];
+            
+            // Reset game variables
+            score = 0;
+            gameSpeed = INITIAL_SPEED;
+            isJumping = false;
+            dinoPosition = 0;
+            dinoVelocity = 0;
+            obstacleTimer = OBSTACLE_INTERVAL * 0.7; // Start with first obstacle after 70% of interval
+            
+            // Reset dino position
+            dino.style.transform = 'translateY(0)';
+            
+            // Update score display
+            Renderer.updateScore();
+        }
+
+        function gameOver() {
+            GameState.current = GameState.GAME_OVER;
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+            Renderer.showGameOver();
+        }
+
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+
+            if (GameState.current === GameState.PLAYING) {
+                // Update game state
+                Physics.updateDino(deltaTime);
+                Physics.updateObstacles(deltaTime);
+                
+                // Spawn new obstacles with increased interval
+                obstacleTimer += deltaTime;
+                if (obstacleTimer > OBSTACLE_INTERVAL / (gameSpeed/INITIAL_SPEED)) {
+                    Renderer.createObstacle();
+                    obstacleTimer = 0;
+                    
+                    // Add slight random variation (4-5 seconds total)
+                    const randomVariation = Math.random() * 1000 - 500; // ±500ms variation
+                    obstacleTimer = -randomVariation;
+                }
+                
+                // Increase difficulty
+                gameSpeed += SPEED_INCREMENT * deltaTime / 16;
+                score += SCORE_INCREMENT * gameSpeed;
+                Renderer.updateScore();
+                
+                // Check for collisions
+                if (Physics.checkCollisions()) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize the game
+        InputHandler.init();
+    </script>
+</body>
+</html>
